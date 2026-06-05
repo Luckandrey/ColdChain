@@ -243,6 +243,81 @@ export async function buscarRotaPadrao() {
   return resultado.rows[0];
 }
 
+export async function buscarDadosCompletosRotaPadrao() {
+  const rota = await buscarRotaPadrao();
+
+  if (!rota) {
+    return null;
+  }
+
+  const [leituras, eventosCriticos] = await Promise.all([
+    listarLeiturasCompletasDaRota(rota.id_rota),
+    listarEventosCriticosDaRota(rota.id_rota),
+  ]);
+
+  return {
+    ...rota,
+    leituras,
+    eventosCriticos,
+  };
+}
+
+export async function listarLeiturasCompletasDaRota(idRota) {
+  const resultado = await pool.query(
+    `
+    SELECT
+      r.id_rota,
+      cl.nome AS cliente,
+      v.nome AS veiculo,
+      p.nome AS produto,
+      p.tipo AS tipo_produto,
+      r.status AS status_rota,
+      lt.id_leitura,
+      lt.data_hora,
+      lt.temperatura_celsius::float AS temperatura_celsius
+    FROM leiturastemperatura lt
+    JOIN rotas r ON r.id_rota = lt.id_rota
+    JOIN veiculos v ON v.id_veiculo = r.id_veiculo
+    JOIN clientes cl ON cl.id_cliente = r.id_cliente
+    JOIN cargas c ON c.id_carga = r.id_carga
+    JOIN produtos p ON p.id_produto = c.id_produto
+    WHERE r.id_rota = $1
+    ORDER BY lt.data_hora ASC, lt.id_leitura ASC;
+    `,
+    [idRota]
+  );
+
+  return resultado.rows;
+}
+
+export async function listarEventosCriticosDaRota(idRota) {
+  const resultado = await pool.query(
+    `
+    SELECT
+      r.id_rota,
+      cl.nome AS cliente,
+      v.nome AS veiculo,
+      p.nome AS produto,
+      p.tipo AS tipo_produto,
+      ec.id_evento,
+      ec.data_hora,
+      ec.temperatura_registrada::float AS temperatura_registrada,
+      ec.descricao
+    FROM eventoscriticos ec
+    JOIN rotas r ON r.id_rota = ec.id_rota
+    JOIN veiculos v ON v.id_veiculo = r.id_veiculo
+    JOIN clientes cl ON cl.id_cliente = r.id_cliente
+    JOIN cargas c ON c.id_carga = r.id_carga
+    JOIN produtos p ON p.id_produto = c.id_produto
+    WHERE r.id_rota = $1
+    ORDER BY ec.data_hora ASC, ec.id_evento ASC;
+    `,
+    [idRota]
+  );
+
+  return resultado.rows;
+}
+
 export async function salvarLeituraSensor(payload) {
   const rota = await buscarRotaPadrao();
 

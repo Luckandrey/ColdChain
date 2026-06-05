@@ -51,6 +51,13 @@ npm run dev
 
 O backend usa as variaveis definidas em `backend/.env`, incluindo conexao com MQTT e PostgreSQL/RDS.
 
+Variaveis adicionais para gerar arquivos e enviar para o S3:
+
+```env
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=s3-bucket-projeto-fabio-temaj
+```
+
 ## Como Rodar O Simulador Python
 
 Instale a dependencia MQTT para Python:
@@ -67,6 +74,46 @@ python simulador.py
 ```
 
 O simulador publica mensagens de telemetria no topico MQTT configurado no codigo.
+
+## Exportacao CSV
+
+O backend disponibiliza o endpoint:
+
+```http
+GET /api/relatorios/csv
+```
+
+Ele gera o rastro completo da viagem com dados reais do RDS, envia o arquivo para o S3 na pasta `rastros/` e retorna o CSV como download para o navegador.
+
+Teste manual:
+
+```bash
+curl http://localhost:3000/api/relatorios/csv --output rastro-coldchain.csv
+```
+
+## Certificado PDF
+
+O backend disponibiliza os endpoints:
+
+```http
+POST /api/certificados
+GET /api/certificados/download
+```
+
+O certificado PDF usa as leituras e eventos criticos salvos no RDS para gerar um relatorio de conformidade da cadeia do frio. O arquivo e enviado para o S3 na pasta `certificados/`.
+
+Teste manual:
+
+```bash
+curl -X POST http://localhost:3000/api/certificados
+curl http://localhost:3000/api/certificados/download --output certificado.pdf
+```
+
+## Upload Para S3
+
+Os arquivos gerados sao enviados para o bucket configurado em `S3_BUCKET_NAME`. Em producao, recomenda-se usar IAM Role na EC2 ou variaveis de ambiente configuradas no servidor. Nao use credenciais AWS hardcoded no codigo.
+
+No frontend, os botoes `Exportar CSV` e `Gerar certificado` baixam os arquivos automaticamente pelo navegador.
 
 ## Seguranca
 

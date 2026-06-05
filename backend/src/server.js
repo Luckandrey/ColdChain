@@ -9,6 +9,11 @@ import {
   listarUltimasLeiturasTemperatura,
   listarUltimosEventos,
 } from "./dbService.js";
+import {
+  gerarCertificadoPdf,
+  gerarCsvRastroViagem,
+} from "./reportService.js";
+import { uploadArquivoS3 } from "./s3Service.js";
 
 dotenv.config();
 
@@ -24,7 +29,6 @@ const allowedOrigins = (
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-  
 app.use(
   cors({
     origin(origin, callback) {
@@ -96,17 +100,84 @@ app.get("/api/leituras-temperatura", async (req, res) => {
   }
 });
 
-app.post("/api/certificados", (req, res) => {
-  const certificado = {
-    id: `CERT-${Date.now()}`,
-    cargaId: estado.carga.id,
-    status: "Gerado",
-    mensagem:
-      "Certificado simulado gerado com base nas leituras da cadeia do frio.",
-    criadoEm: new Date().toISOString(),
-  };
+app.get("/api/relatorios/csv", async (req, res) => {
+  try {
+    const relatorio = await gerarCsvRastroViagem();
+    const body = Buffer.from(relatorio.content, "utf-8");
+    const upload = await uploadArquivoS3({
+      key: `rastros/${relatorio.fileName}`,
+      body,
+      contentType: relatorio.contentType,
+    });
 
-  res.status(201).json(certificado);
+    console.log("Rastro CSV enviado para o S3:", upload.s3Uri);
+
+    res.setHeader("Content-Type", relatorio.contentType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${relatorio.fileName}"`
+    );
+    res.send(body);
+  } catch (error) {
+    console.error("Erro ao gerar rastro CSV:");
+    console.error(error);
+    res.status(500).json({
+      mensagem: "Não foi possível gerar o rastro CSV.",
+    });
+  }
+});
+
+app.post("/api/certificados", async (req, res) => {
+  try {
+    const certificado = await gerarCertificadoPdf();
+    const upload = await uploadArquivoS3({
+      key: `certificados/${certificado.fileName}`,
+      body: certificado.buffer,
+      contentType: certificado.contentType,
+    });
+
+    res.status(201).json({
+      status: "Gerado",
+      fileName: certificado.fileName,
+      bucket: upload.bucket,
+      s3Key: upload.key,
+      s3Uri: upload.s3Uri,
+      mensagem: "Certificado PDF gerado e enviado para o S3.",
+      criadoEm: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Erro ao gerar certificado PDF:");
+    console.error(error);
+    res.status(500).json({
+      mensagem: "Não foi possível gerar o certificado PDF.",
+    });
+  }
+});
+
+app.get("/api/certificados/download", async (req, res) => {
+  try {
+    const certificado = await gerarCertificadoPdf();
+    const upload = await uploadArquivoS3({
+      key: `certificados/${certificado.fileName}`,
+      body: certificado.buffer,
+      contentType: certificado.contentType,
+    });
+
+    console.log("Certificado PDF enviado para o S3:", upload.s3Uri);
+
+    res.setHeader("Content-Type", certificado.contentType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${certificado.fileName}"`
+    );
+    res.send(certificado.buffer);
+  } catch (error) {
+    console.error("Erro ao baixar certificado PDF:");
+    console.error(error);
+    res.status(500).json({
+      mensagem: "Não foi possível baixar o certificado PDF.",
+    });
+  }
 });
 
 app.listen(PORT, async () => {

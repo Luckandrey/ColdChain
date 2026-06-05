@@ -154,6 +154,18 @@ function normalizarCargasAtivas(lista, cargaAtual) {
   });
 }
 
+function baixarArquivo(blob, nomeArquivo) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function App() {
   const [menuAberto, setMenuAberto] = useState(false);
   const [paginaAtiva, setPaginaAtiva] = useState("central");
@@ -257,6 +269,40 @@ export default function App() {
     };
   }, []);
 
+  async function handleExportarCsv() {
+    try {
+      const resposta = await fetch(`${API_URL}/api/relatorios/csv`);
+
+      if (!resposta.ok) {
+        throw new Error("Erro ao gerar CSV");
+      }
+
+      const blob = await resposta.blob();
+
+      baixarArquivo(blob, "rastro-coldchain.csv");
+    } catch (error) {
+      console.error("Erro ao exportar CSV:", error);
+      alert("Não foi possível gerar o arquivo.");
+    }
+  }
+
+  async function handleGerarCertificado() {
+    try {
+      const resposta = await fetch(`${API_URL}/api/certificados/download`);
+
+      if (!resposta.ok) {
+        throw new Error("Erro ao gerar certificado");
+      }
+
+      const blob = await resposta.blob();
+
+      baixarArquivo(blob, "certificado-coldchain.pdf");
+    } catch (error) {
+      console.error("Erro ao gerar certificado:", error);
+      alert("Não foi possível gerar o arquivo.");
+    }
+  }
+
   const temperaturaCritica =
     carga.temperatura < carga.temperaturaMinima ||
     carga.temperatura > carga.temperaturaMaxima;
@@ -312,12 +358,14 @@ export default function App() {
               aberto={menuAberto}
               icone="arquivo"
               rotulo="Exportar CSV"
+              onClick={handleExportarCsv}
             />
             <AcaoMenu
               aberto={menuAberto}
               destaque
               icone="certificado"
               rotulo="Gerar certificado"
+              onClick={handleGerarCertificado}
             />
           </div>
         </aside>
@@ -621,10 +669,17 @@ function ItemMenu({ rotulo, icone, ativo = false, aberto = false, onClick }) {
   );
 }
 
-function AcaoMenu({ rotulo, icone, aberto = false, destaque = false }) {
+function AcaoMenu({
+  rotulo,
+  icone,
+  aberto = false,
+  destaque = false,
+  onClick,
+}) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className={`flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-sm font-bold transition ${
         aberto ? "justify-start" : "justify-center"
       } ${
