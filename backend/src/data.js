@@ -1,0 +1,76 @@
+export const estado = {
+  carga: {
+    id: "CRG-2026-001",
+    produto: "Vacinas termolábeis",
+    cliente: "Hospital Central",
+    veiculo: "TRK-4821",
+    motorista: "Carlos Mendes",
+    rota: "Belém - Ananindeua",
+    origem: "Centro de Distribuição",
+    destino: "Hospital Central",
+    status: "Em trânsito",
+    temperatura: 8.6,
+    umidade: 68,
+    portaAberta: false,
+    vibracao: 0.42,
+    latitude: -1.4558,
+    longitude: -48.4902,
+    temperaturaMinima: 2,
+    temperaturaMaxima: 8,
+    progresso: 64,
+    previsaoChegada: "27 min",
+  },
+
+  historicoTemperatura: [
+    { horario: "08:00", temperatura: 4.1 },
+    { horario: "08:15", temperatura: 4.3 },
+    { horario: "08:30", temperatura: 5.0 },
+    { horario: "08:45", temperatura: 5.7 },
+    { horario: "09:00", temperatura: 7.2 },
+    { horario: "09:15", temperatura: 8.6 },
+  ],
+
+  alertas: [
+    {
+      id: 1,
+      titulo: "Temperatura fora da faixa",
+      descricao: "Carga CRG-2026-001 registrou 8.6°C no último envio.",
+      nivel: "critico",
+      horario: "09:15",
+    },
+    {
+      id: 2,
+      titulo: "Abertura de porta",
+      descricao: "Porta do baú aberta por 42 segundos durante a rota.",
+      nivel: "atencao",
+      horario: "08:48",
+    },
+  ],
+
+  cargasAtivas: [
+    {
+      id: "CRG-2026-001",
+      produto: "Vacinas termolábeis",
+      veiculo: "TRK-4821",
+      rota: "Belém - Ananindeua",
+      status: "Risco",
+      temperatura: "8.6°C",
+    },
+    {
+      id: "CRG-2026-002",
+      produto: "Insulina hospitalar",
+      veiculo: "TRK-1904",
+      rota: "Belém - Marituba",
+      status: "Normal",
+      temperatura: "4.8°C",
+    },
+    {
+      id: "CRG-2026-003",
+      produto: "Alimentos perecíveis",
+      veiculo: "TRK-7742",
+      rota: "Icoaraci - Belém",
+      status: "Normal",
+      temperatura: "3.9°C",
+    },
+  ],
+};
