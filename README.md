@@ -115,6 +115,16 @@ Os arquivos gerados sao enviados para o bucket configurado em `S3_BUCKET_NAME`. 
 
 No frontend, os botoes `Exportar CSV` e `Gerar certificado` baixam os arquivos automaticamente pelo navegador.
 
+## Upload De Notas Fiscais Digitalizadas
+
+O sistema permite enviar arquivos PDF, PNG ou JPG representando notas fiscais digitalizadas. Esses arquivos sao enviados pelo frontend para o backend e armazenados no bucket S3 na pasta `notas-fiscais/`.
+
+Teste manual:
+
+```bash
+curl -i -X POST http://localhost:3000/api/notas-fiscais -F "arquivo=@nota-fiscal-exemplo.pdf"
+```
+
 ## Seguranca
 
 Nao versione arquivos `.env`, chaves `.pem`, certificados, credenciais da AWS, senhas reais, `node_modules`, builds ou pastas temporarias de deploy. Use sempre os arquivos `.env.example` como referencia para configurar ambientes locais e servidores.

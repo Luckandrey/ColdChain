@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import multer from "multer";
 import { estado } from "./data.js";
 import { iniciarMqtt } from "./mqttClient.js";
 import { testarConexaoBanco } from "./db.js";
@@ -20,6 +21,11 @@ dotenv.config();
 const app = express();
 
 const PORT = process.env.PORT || 3000;
+const TIPOS_NOTA_FISCAL_PERMITIDOS = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+]);
 const allowedOrigins = (
   process.env.FRONTEND_URLS ||
   process.env.FRONTEND_URL ||
@@ -28,6 +34,59 @@ const allowedOrigins = (
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const uploadNotaFiscal = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+  fileFilter(req, file, callback) {
+    if (TIPOS_NOTA_FISCAL_PERMITIDOS.has(file.mimetype)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(
+      new Error("Formato inválido. Envie um arquivo PDF, PNG ou JPG/JPEG.")
+    );
+  },
+});
+
+function sanitizarNomeArquivo(nomeArquivo) {
+  return nomeArquivo
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+}
+
+function criarTimestampArquivo() {
+  return new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
+}
+
+function tratarUploadNotaFiscal(req, res, next) {
+  uploadNotaFiscal.single("arquivo")(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
+
+    console.error("Erro ao receber nota fiscal:");
+    console.error(error);
+
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      res.status(400).json({
+        mensagem: "Arquivo muito grande. O limite é de 10 MB.",
+      });
+      return;
+    }
+
+    res.status(400).json({
+      mensagem: error.message || "Arquivo inválido.",
+    });
+  });
+}
 
 app.use(
   cors({
@@ -176,6 +235,43 @@ app.get("/api/certificados/download", async (req, res) => {
     console.error(error);
     res.status(500).json({
       mensagem: "Não foi possível baixar o certificado PDF.",
+    });
+  }
+});
+
+app.post("/api/notas-fiscais", tratarUploadNotaFiscal, async (req, res) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({
+        mensagem: "Envie um arquivo no campo 'arquivo'.",
+      });
+      return;
+    }
+
+    const nomeOriginalSanitizado =
+      sanitizarNomeArquivo(req.file.originalname) || "nota-fiscal";
+    const fileName = nomeOriginalSanitizado;
+    const s3Key = `notas-fiscais/nota-fiscal-${criarTimestampArquivo()}-${nomeOriginalSanitizado}`;
+    const upload = await uploadArquivoS3({
+      key: s3Key,
+      body: req.file.buffer,
+      contentType: req.file.mimetype,
+    });
+
+    res.status(201).json({
+      status: "Enviado",
+      fileName,
+      bucket: upload.bucket,
+      s3Key: upload.key,
+      s3Uri: upload.s3Uri,
+      mensagem: "Nota fiscal digitalizada enviada para o S3.",
+      criadoEm: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Erro ao enviar nota fiscal para o S3:");
+    console.error(error);
+    res.status(500).json({
+      mensagem: "Não foi possível enviar a nota fiscal para o S3.",
     });
   }
 });

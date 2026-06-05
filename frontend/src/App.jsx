@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 
 import coldChainLogo from "./assets/ColdChainLogo.png";
 
@@ -169,6 +169,7 @@ function baixarArquivo(blob, nomeArquivo) {
 export default function App() {
   const [menuAberto, setMenuAberto] = useState(false);
   const [paginaAtiva, setPaginaAtiva] = useState("central");
+  const inputNotaFiscalRef = useRef(null);
 
   const [carga, setCarga] = useState({
     id: "CRG-2026-001",
@@ -303,6 +304,40 @@ export default function App() {
     }
   }
 
+  function handleAbrirSeletorNotaFiscal() {
+    inputNotaFiscalRef.current?.click();
+  }
+
+  async function handleEnviarNotaFiscal(event) {
+    const arquivo = event.target.files?.[0];
+
+    if (!arquivo) {
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+
+      formData.append("arquivo", arquivo);
+
+      const resposta = await fetch(`${API_URL}/api/notas-fiscais`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!resposta.ok) {
+        throw new Error("Erro ao enviar nota fiscal");
+      }
+
+      alert("Nota fiscal enviada para o S3 com sucesso.");
+    } catch (error) {
+      console.error("Erro ao enviar nota fiscal:", error);
+      alert("Não foi possível enviar a nota fiscal.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
   const temperaturaCritica =
     carga.temperatura < carga.temperaturaMinima ||
     carga.temperatura > carga.temperaturaMaxima;
@@ -366,6 +401,19 @@ export default function App() {
               icone="certificado"
               rotulo="Gerar certificado"
               onClick={handleGerarCertificado}
+            />
+            <AcaoMenu
+              aberto={menuAberto}
+              icone="arquivo"
+              rotulo="Enviar nota fiscal"
+              onClick={handleAbrirSeletorNotaFiscal}
+            />
+            <input
+              ref={inputNotaFiscalRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg"
+              hidden
+              onChange={handleEnviarNotaFiscal}
             />
           </div>
         </aside>
