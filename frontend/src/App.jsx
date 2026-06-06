@@ -168,6 +168,7 @@ function baixarArquivo(blob, nomeArquivo) {
 
 export default function App() {
   const [menuAberto, setMenuAberto] = useState(false);
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
   const [paginaAtiva, setPaginaAtiva] = useState("central");
   const inputNotaFiscalRef = useRef(null);
 
@@ -408,15 +409,27 @@ export default function App() {
               rotulo="Enviar nota fiscal"
               onClick={handleAbrirSeletorNotaFiscal}
             />
-            <input
-              ref={inputNotaFiscalRef}
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg"
-              hidden
-              onChange={handleEnviarNotaFiscal}
-            />
           </div>
         </aside>
+
+        <MenuMobile
+          aberto={menuMobileAberto}
+          itensMenu={itensMenu}
+          paginaAtiva={paginaAtiva}
+          onClose={() => setMenuMobileAberto(false)}
+          onSelecionarPagina={setPaginaAtiva}
+          onExportarCsv={handleExportarCsv}
+          onGerarCertificado={handleGerarCertificado}
+          onEnviarNotaFiscal={handleAbrirSeletorNotaFiscal}
+        />
+
+        <input
+          ref={inputNotaFiscalRef}
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg"
+          hidden
+          onChange={handleEnviarNotaFiscal}
+        />
 
         <main className="w-full min-w-0 overflow-x-hidden xl:ml-20 xl:max-w-[calc(100vw-5rem)]">
           <HeaderPlataforma
@@ -425,6 +438,7 @@ export default function App() {
             horarioAtualizacao={horarioAtualizacao}
             erroApi={erroApi}
             carregando={carregando}
+            onAbrirMenuMobile={() => setMenuMobileAberto(true)}
           />
 
           <div className="px-4 py-6 sm:px-6 lg:px-8">
@@ -691,6 +705,114 @@ export default function App() {
   );
 }
 
+function MenuMobile({
+  aberto,
+  itensMenu,
+  paginaAtiva,
+  onClose,
+  onSelecionarPagina,
+  onExportarCsv,
+  onGerarCertificado,
+  onEnviarNotaFiscal,
+}) {
+  return (
+    <div
+      className={`fixed inset-0 z-50 xl:hidden ${
+        aberto ? "pointer-events-auto" : "pointer-events-none"
+      }`}
+      aria-hidden={!aberto}
+    >
+      <button
+        type="button"
+        className={`absolute inset-0 bg-black/70 transition-opacity ${
+          aberto ? "opacity-100" : "opacity-0"
+        }`}
+        aria-label="Fechar menu"
+        onClick={onClose}
+      />
+
+      <aside
+        className={`relative flex h-full w-[85vw] max-w-sm flex-col overflow-y-auto border-r border-white/10 bg-[#08111F] p-4 shadow-2xl shadow-black/40 transition-transform duration-300 ${
+          aberto ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="mb-8 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <img
+              src={coldChainLogo}
+              alt="ColdChain"
+              className="h-11 w-11 shrink-0 rounded-2xl object-cover"
+            />
+
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-black tracking-tight">
+                ColdChain
+              </h1>
+              <p className="text-xs text-slate-400">Controle Logístico</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 text-slate-300 transition hover:bg-white/5 hover:text-white"
+            aria-label="Fechar menu"
+            onClick={onClose}
+          >
+            <IconeMenu nome="fechar" />
+          </button>
+        </div>
+
+        <nav className="space-y-2">
+          {itensMenu.map((item) => (
+            <ItemMenu
+              key={item.id}
+              ativo={paginaAtiva === item.id}
+              aberto
+              icone={item.icone}
+              rotulo={item.rotulo}
+              onClick={() => {
+                onSelecionarPagina(item.id);
+                onClose();
+              }}
+            />
+          ))}
+        </nav>
+
+        <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
+          <AcaoMenu
+            aberto
+            icone="arquivo"
+            rotulo="Exportar CSV"
+            onClick={() => {
+              onExportarCsv();
+              onClose();
+            }}
+          />
+          <AcaoMenu
+            aberto
+            destaque
+            icone="certificado"
+            rotulo="Gerar certificado"
+            onClick={() => {
+              onGerarCertificado();
+              onClose();
+            }}
+          />
+          <AcaoMenu
+            aberto
+            icone="arquivo"
+            rotulo="Enviar nota fiscal"
+            onClick={() => {
+              onEnviarNotaFiscal();
+              onClose();
+            }}
+          />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 function ItemMenu({ rotulo, icone, ativo = false, aberto = false, onClick }) {
   return (
     <button
@@ -755,6 +877,7 @@ function HeaderPlataforma({
   horarioAtualizacao,
   erroApi,
   carregando,
+  onAbrirMenuMobile,
 }) {
   const statusTexto = erroApi
     ? "API offline"
@@ -765,13 +888,24 @@ function HeaderPlataforma({
   return (
     <header className="border-b border-white/10 bg-[#0E1729] px-4 py-4 shadow-lg shadow-black/10 sm:px-6 lg:px-8">
       <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">
-            ColdChain
-          </p>
-          <h2 className="mt-1 truncate text-xl font-black tracking-tight text-white sm:text-2xl">
-            {pagina.titulo}
-          </h2>
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-cyan-300 transition hover:bg-white/[0.07] xl:hidden"
+            aria-label="Abrir menu"
+            onClick={onAbrirMenuMobile}
+          >
+            <IconeMenu nome="menu" />
+          </button>
+
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">
+              ColdChain
+            </p>
+            <h2 className="mt-1 truncate text-xl font-black tracking-tight text-white sm:text-2xl">
+              {pagina.titulo}
+            </h2>
+          </div>
         </div>
 
         <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
@@ -1071,6 +1205,19 @@ function IconeMenu({ nome }) {
       <>
         <path d="M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15Z" />
         <path d="m16 16 5 5" />
+      </>
+    ),
+    menu: (
+      <>
+        <path d="M4 7h16" />
+        <path d="M4 12h16" />
+        <path d="M4 17h16" />
+      </>
+    ),
+    fechar: (
+      <>
+        <path d="M6 6l12 12" />
+        <path d="M18 6 6 18" />
       </>
     ),
   };
